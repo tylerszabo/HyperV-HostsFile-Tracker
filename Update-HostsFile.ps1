@@ -82,7 +82,7 @@ $SearchState = "Before"
 $HostsFileBeforeSection = ""
 $HostsFileAfterSection = ""
 
-$IdToFqdn = @{}
+$PreviousEntries = @{}
 
 $HostsFileContents | ForEach-Object {
   If ($SearchState -eq "Before") {
@@ -96,7 +96,17 @@ $HostsFileContents | ForEach-Object {
       $SearchState = "After"
     } Else {
       If ($_ -Match "^(\S+)\s+(\S+)\s*#\s*(.*)") {
-        $IdToFqdn[($Matches[3] | ConvertFrom-Json).Id] = $Matches[2]
+        $ParsedData = $Matches[3] | ConvertFrom-Json
+        $Id = $ParsedData.Id
+        $IPAddress = $Matches[1]
+        $FQDN = $Matches[2]
+        $ModifiedTime = $ParsedData.Modified
+        If (-Not $PreviousEntries[$Id]) {
+          $PreviousEntries[$Id] = @{ FQDN = $FQDN; Modified = $ModifiedTime; IPs = @($IPAddress)}
+        }
+        Else {
+          $PreviousEntries[$Id]["IPs"] += $IPAddress
+        }
       }
     }
   } Else {
@@ -104,32 +114,44 @@ $HostsFileContents | ForEach-Object {
   }
 }
 
+$PreviousEntries.Keys | ForEach-Object { $_, $PreviousEntries[$_] } | Format-List | Out-String | Write-Verbose
+
 $GeneratedContent = "$SECTION_START`r`n`r`n"
 
 $VMNetworkAdapters | ForEach-Object {
-  $GeneratedContent += "# $($_.VMName) [$($_.SwitchName)]`r`n"
-
-  $Fqdn = $IdToFqdn[$_.Id]
   $IPs = $_.IPAddresses
 
-  If ($Fqdn -And -Not $IPs) { $IPs = "0.0.0.0" }
+  $PreviousEntry = $PreviousEntries[$_.Id]
+  $ModifiedTime = $Time.ToString("yyyy-MM-ddTHH:mm:sszzz");
+
+  $Fqdn = ""
+  If ($PreviousEntry) {
+    $Fqdn = $PreviousEntry["FQDN"]
+    If (-Not $IPs) {
+      If ($PreviousEntry["IPs"]) {
+        $IPs = $PreviousEntry["IPs"]
+      } Else {
+        $IPs = @("0.0.0.0")
+      }
+      $ModifiedTime = $PreviousEntry["Modified"]
+    }
+  }
 
   If (-Not $Fqdn) {
     If ($_.AdapterId -and $_.VMId) {
       $Fqdn = ($_.AdapterId, $_.VMId, $DefaultDomain) -Join "."
-    } Else {
-      $Fqdn = ([GUID]::NewGuid().ToString(), $DefaultDomain) -Join "."
     }
   }
 
-  $Entry = @{ Id = $_.Id; Modified  = $Time.ToString("yyyy-MM-ddTHH:mm:sszzz"); }
-  $Comment = $Entry | ConvertTo-Json -Compress
+  If ($IPs -And $Fqdn) {
+    $GeneratedContent += "# $($_.VMName) [$($_.SwitchName)]`r`n"
+    $Comment = @{ Id = $_.Id; Modified = $ModifiedTime; } | ConvertTo-Json -Compress
 
-
-  $IPs | ForEach-Object {
-    $GeneratedContent += "$_ $Fqdn # $Comment`r`n"
+    $IPs | ForEach-Object {
+      $GeneratedContent += "$_ $Fqdn # $Comment`r`n"
+    }
+    $GeneratedContent += "`r`n"
   }
-  $GeneratedContent += "`r`n"
 }
 $GeneratedContent += "$SECTION_END`r`n"
 
