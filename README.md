@@ -2,7 +2,7 @@
 
 ## Overview
 
-This script will update `%WINDIR%\System32\drivers\etc\hosts` with entries for Hyper-V guests (or another file with the -HostsFilePath argument).
+This script will update `%WINDIR%\System32\drivers\etc\hosts` with entries for Hyper-V guests (or another file with the `-HostsFilePath` argument).
 
 Host names can be customized by editing the hosts file. For instance, the entries can be altered so long as the id in the JSON string in the comment is preserved. The hostname bound to the full Adapter ID (which contains the VM ID and the Adapter ID).
 
