@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Author>Hyper-V HostsFile Tracker</Author>
+    <Description>Update hosts file with Hyper-V machines whenever a machine is started/restored/resumed</Description>
+  </RegistrationInfo>
+  <Principals>
+    <Principal>
+      <UserId>S-1-5-18</UserId>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+  </Settings>
+  <Triggers>
+    <EventTrigger>
+      <Subscription>&lt;QueryList&gt;&lt;Query Id="0" Path="Microsoft-Windows-Hyper-V-Worker-Admin"&gt;&lt;Select Path="Microsoft-Windows-Hyper-V-Worker-Admin"&gt;*[System[Provider[@Name='Microsoft-Windows-Hyper-V-Worker'] and EventID=18500]]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>
+    </EventTrigger>
+    <EventTrigger>
+      <Subscription>&lt;QueryList&gt;&lt;Query Id="0" Path="Microsoft-Windows-Hyper-V-Worker-Admin"&gt;&lt;Select Path="Microsoft-Windows-Hyper-V-Worker-Admin"&gt;*[System[Provider[@Name='Microsoft-Windows-Hyper-V-Worker'] and EventID=18596]]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>
+    </EventTrigger>
+    <EventTrigger>
+      <Subscription>&lt;QueryList&gt;&lt;Query Id="0" Path="Microsoft-Windows-Hyper-V-Worker-Admin"&gt;&lt;Select Path="Microsoft-Windows-Hyper-V-Worker-Admin"&gt;*[System[Provider[@Name='Microsoft-Windows-Hyper-V-Worker'] and EventID=18518]]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>
+    </EventTrigger>
+  </Triggers>
+  <Actions>
+    <Exec>
+      <Command>%WINDIR%\System32\windowspowershell\v1.0\powershell.exe</Command>
+      <Arguments>-NoProfile -NonInteractive -File "%ProgramFiles%\Hyper-V HostsFile Tracker\Update-HostsFile.ps1"</Arguments>
+    </Exec>
+  </Actions>
+</Task>
