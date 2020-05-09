@@ -121,6 +121,18 @@ $GeneratedContent = "$SECTION_START`r`n`r`n"
 $VMNetworkAdapters | ForEach-Object {
   $IPs = $_.IPAddresses
 
+  If (-Not $IPs) {
+    If ($_.MacAddress -IMatch "^([0-9a-f]{2})[:.-]?([0-9a-f]{2})[:.-]?([0-9a-f]{2})[:.-]?([0-9a-f]{2})[:.-]?([0-9a-f]{2})[:.-]?([0-9a-f]{2})$") {
+      $MacAddress = ($Matches[1..6] -Join "-").toUpper()
+      If ($MacAddress -And $MacAddress -INotIn @("00-00-00-00-00-00", "FF-FF-FF-FF-FF-FF")) {
+        $Neighbors = Get-NetNeighbor -LinkLayerAddress $MacAddress -ErrorAction Ignore | Where-Object -Property State -In @("Reachable", "Permanent")
+        $IPs = @(
+          ($Neighbors | Where-Object -Property AddressFamily -EQ IPv4 | Select-Object -First 1 -ExpandProperty IPAddress),
+          ($Neighbors | Where-Object -Property AddressFamily -EQ IPv6 | Select-Object -First 1 -ExpandProperty IPAddress))
+      }
+    }
+  }
+
   $PreviousEntry = $PreviousEntries[$_.Id]
   $ModifiedTime = $Time.ToString("yyyy-MM-ddTHH:mm:sszzz");
 
