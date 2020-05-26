@@ -142,10 +142,10 @@ $VMNetworkAdapters | ForEach-Object {
     If (-Not $IPs) {
       If ($PreviousEntry["IPs"]) {
         $IPs = $PreviousEntry["IPs"]
+        $ModifiedTime = $PreviousEntry["Modified"]
       } Else {
         $IPs = @("0.0.0.0")
       }
-      $ModifiedTime = $PreviousEntry["Modified"]
     }
   }
 
