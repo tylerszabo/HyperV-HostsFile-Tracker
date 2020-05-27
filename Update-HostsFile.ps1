@@ -8,7 +8,7 @@ Default DNS suffix if an entry doesn't arleady exist
 .PARAMETER HostsFilePath
 Allows for testing on sample hosts files
 .PARAMETER VMName
-Allows for a list of VMs to be specified, this will clobber configurations for omitted VMs as they'll be treated as if they are deleted
+Allows for a list of VMs to be specified; omitted VMs as they'll be treated as if they are deleted
 .PARAMETER NoWait
 Don't wait for adapters to have status
 .PARAMETER NoBackup
@@ -119,6 +119,7 @@ $PreviousEntries.Keys | ForEach-Object { $_, $PreviousEntries[$_] } | Format-Lis
 $GeneratedContent = "$SECTION_START`r`n`r`n"
 
 $VMNetworkAdapters | ForEach-Object {
+  $FullId = $_.Id
   $IPs = $_.IPAddresses
 
   # Attempt to resolve IP from MAC by ARP/NDP table
@@ -134,7 +135,7 @@ $VMNetworkAdapters | ForEach-Object {
     }
   }
 
-  $PreviousEntry = $PreviousEntries[$_.Id]
+  $PreviousEntry = $PreviousEntries[$FullId]
   $ModifiedTime = $Time.ToString("yyyy-MM-ddTHH:mm:sszzz");
 
   $Fqdn = ""
@@ -158,14 +159,30 @@ $VMNetworkAdapters | ForEach-Object {
 
   If ($IPs -And $Fqdn) {
     $GeneratedContent += "# $($_.VMName) [$($_.SwitchName)]`r`n"
-    $Comment = @{ Id = $_.Id; Modified = $ModifiedTime; } | ConvertTo-Json -Compress
+    $Comment = @{ Id = $FullId; Modified = $ModifiedTime; } | ConvertTo-Json -Compress
 
     $IPs | ForEach-Object {
       $GeneratedContent += "$_ $Fqdn # $Comment`r`n"
     }
     $GeneratedContent += "`r`n"
+
+    If ($PreviousEntry) { $PreviousEntries.Remove($FullId) }
   }
 }
+
+$OldIds = $PreviousEntries.Keys
+If ($OldIds.Count -GT 0) {
+  $GeneratedContent += "# Old enties`r`n"
+  $OldIds | ForEach-Object {
+    $FQDN = $PreviousEntries[$_]["FQDN"]
+    $Comment = @{ Id = $_; Modified = $PreviousEntries[$_]["Modified"]; } | ConvertTo-Json -Compress
+    $PreviousEntries[$_]["IPs"] | ForEach-Object {
+      $GeneratedContent += "$_ $FQDN # $Comment`r`n"
+    }
+  }
+  $GeneratedContent += "`r`n"
+}
+
 $GeneratedContent += "$SECTION_END`r`n"
 
 $NewHostsFileContents = $HostsFileBeforeSection + $GeneratedContent + $HostsFileAfterSection
