@@ -121,6 +121,7 @@ $GeneratedContent = "$SECTION_START`r`n`r`n"
 $VMNetworkAdapters | ForEach-Object {
   $IPs = $_.IPAddresses
 
+  # Attempt to resolve IP from MAC by ARP/NDP table
   If (-Not $IPs) {
     If ($_.MacAddress -IMatch "^([0-9a-f]{2})[:.-]?([0-9a-f]{2})[:.-]?([0-9a-f]{2})[:.-]?([0-9a-f]{2})[:.-]?([0-9a-f]{2})[:.-]?([0-9a-f]{2})$") {
       $MacAddress = ($Matches[1..6] -Join "-").toUpper()
@@ -150,7 +151,7 @@ $VMNetworkAdapters | ForEach-Object {
   }
 
   If (-Not $Fqdn) {
-    If ($_.AdapterId -and $_.VMId) {
+    If ($_.AdapterId -And $_.VMId) {
       $Fqdn = ($_.AdapterId, $_.VMId, $DefaultDomain) -Join "."
     }
   }
