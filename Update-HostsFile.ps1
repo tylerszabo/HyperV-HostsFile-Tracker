@@ -119,6 +119,7 @@ $PreviousEntries.Keys | ForEach-Object { $_, $PreviousEntries[$_] } | Format-Lis
 $GeneratedContent = "$SECTION_START`r`n`r`n"
 
 $VMNetworkAdapters | ForEach-Object {
+  $WroteEntry = $False
   $FullId = $_.Id
   $IPs = $_.IPAddresses
 
@@ -163,10 +164,11 @@ $VMNetworkAdapters | ForEach-Object {
 
     $IPs | ForEach-Object {
       $GeneratedContent += "$_ $Fqdn # $Comment`r`n"
+      $WroteEntry = $True
     }
     $GeneratedContent += "`r`n"
 
-    If ($PreviousEntry) { $PreviousEntries.Remove($FullId) }
+    If ($WroteEntry -And $PreviousEntry) { $PreviousEntries.Remove($FullId) }
   }
 }
 
