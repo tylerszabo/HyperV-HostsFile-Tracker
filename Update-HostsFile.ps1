@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>
 Param (
   [Parameter(Mandatory = $False, Position = 0)]
   [String]
-  $DefaultDomain = "hyperv.localhost",
+  $DefaultDomain = "hyperv.internal",
 
   [Parameter(Mandatory = $False)]
   [String]
