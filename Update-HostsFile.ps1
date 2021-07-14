@@ -9,8 +9,10 @@ Default DNS suffix if an entry doesn't arleady exist
 Allows for testing on sample hosts files
 .PARAMETER VMName
 Allows for a list of VMs to be specified; omitted VMs as they'll be treated as if they are deleted
-.PARAMETER NoWait
-Don't wait for adapters to have status
+.PARAMETER MaxRetries
+Number of times to retry for hosts to be running and adapters to have status
+.PARAMETER RetryWait
+Time in seconds to wait between retries
 .PARAMETER NoBackup
 Don't backup old hosts file
 .NOTES
@@ -44,8 +46,12 @@ Param (
   $VMName = "*",
 
   [Parameter(Mandatory = $False)]
-  [Switch]
-  $NoWait = $False,
+  [Int]
+  $MaxRetries = 60,
+
+  [Parameter(Mandatory = $False)]
+  [Int]
+  $RetryWait = 1,
 
   [Parameter(Mandatory = $False)]
   [Switch]
@@ -58,14 +64,34 @@ $SECTION_START = "# Managed by HyperV-HostsFile-Tracker"
 $SECTION_END = "# End of HyperV-HostsFile-Tracker section"
 
 $Time = [DateTime]::Now
+$RetryCount = 1
 
-$VMNetworkAdapters = Get-VMNetworkAdapter -VMName $VMName
-If (-Not $NoWait) {
-  While ($VMNetworkAdapters | Where-Object { $_.Status -And $_.Status -NE "Ok" }) {
-    Write-Verbose "Adapters not ready, waiting..."
-    Start-Sleep -Seconds 20
-    $VMNetworkAdapters = Get-VMNetworkAdapter -VMName $VMName
-  }
+$VMs = Get-VM -VMName $VMName
+
+# Wait for VMs to be started
+While (
+  $RetryCount -LE $MaxRetries -And
+  $VMs | Where-Object { $_.State -IN @('Resuming', 'Starting') }
+) {
+  Write-Verbose "VMs are still starting/resuming, waiting... (retry $RetryCount of $MaxRetries)"
+  Start-Sleep -Seconds $RetryWait
+  # VM objects in list will have their status automatically updated
+
+  $RetryCount++
+}
+
+$VMNetworkAdapters = $VMs | Where-Object { $_.State -EQ "Running" } | Get-VMNetworkAdapter
+
+# Wait for IPs
+While (
+  $RetryCount -LE $MaxRetries -And (
+  $VMNetworkAdapters | Where-Object { ($_.IPAddresses | ForEach-Object { [IPAddress]::Parse($_).AddressFamily }) -NotContains "InterNetwork" }
+)) {
+  Write-Verbose "Waiting for adapters to have IPv4 addresses... (retry $RetryCount of $MaxRetries)"
+  Start-Sleep -Seconds $RetryWait
+  # Adapter objects in list will have their status automatically updated
+
+  $RetryCount++
 }
 
 If (-Not $NoBackup) {
